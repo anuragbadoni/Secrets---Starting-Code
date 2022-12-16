@@ -1,4 +1,5 @@
 //jshint esversion:6
+require('dotenv').config();
 
 //                                                 mongoose                 //
 const mongoose=require("mongoose");
@@ -20,8 +21,8 @@ inputsecret:String
 
 //                                  encryption                                           //
 
-var secret = "anurag badoni";
-userschema.plugin(encrypt, { secret: secret  ,excludeFromEncryption: ['email'],}); 
+
+userschema.plugin(encrypt, { secret: process.env.SECRET  ,excludeFromEncryption: ['email'],}); 
 
 
 //                                  encryption                                           //
