@@ -4,18 +4,34 @@
 const mongoose=require("mongoose");
 mongoose.set('strictQuery', true);
 mongoose.connect("mongodb://localhost:27017/userdb")
+var encrypt = require('mongoose-encryption');
+
 
 const userschema=new mongoose.Schema({
 email:String,
 password:String
-});
+});           
+
+
 
 const secretschema=new mongoose.Schema({
 inputsecret:String
 });
 
+//                                  encryption                                           //
+
+var secret = "anurag badoni";
+userschema.plugin(encrypt, { secret: secret  ,excludeFromEncryption: ['email'],}); 
+
+
+//                                  encryption                                           //
+
+
+
+
+
 const user=mongoose.model("user",userschema);
-const secret=mongoose.model("secret",secretschema);
+const secrets=mongoose.model("secrets",secretschema);
 //                                                 mongoose                 //
 
 const express=require("express");
@@ -97,7 +113,7 @@ app.get("/submit",function(req,res){
     
 
 app.post("/submit",function(req,res){
-const newsecret=new secret({
+const newsecret=new secrets({
 inputsecret: req.body.secret
 });
 newsecret.save(function(err){
