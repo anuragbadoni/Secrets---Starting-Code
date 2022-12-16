@@ -1,11 +1,12 @@
 //jshint esversion:6
 require('dotenv').config();
+var md5 = require('md5');
 
 //                                                 mongoose                 //
 const mongoose=require("mongoose");
 mongoose.set('strictQuery', true);
 mongoose.connect("mongodb://localhost:27017/userdb")
-var encrypt = require('mongoose-encryption');
+// var encrypt = require('mongoose-encryption');
 
 
 const userschema=new mongoose.Schema({
@@ -22,7 +23,7 @@ inputsecret:String
 //                                  encryption                                           //
 
 
-userschema.plugin(encrypt, { secret: process.env.SECRET  ,excludeFromEncryption: ['email'],}); 
+// userschema.plugin(encrypt, { secret: process.env.SECRET  ,excludeFromEncryption: ['email'],}); 
 
 
 //                                  encryption                                           //
@@ -69,7 +70,7 @@ app.get("/register",function(req,res){
 app.post("/register",function(req,res){
 const newuser=new user({
     email:req.body.email,
-    password:req.body.password
+    password:md5(req.body.password)
 });
 newuser.save(function(err){
 if(!err)
@@ -85,7 +86,7 @@ console.log(err);
 
 
 app.post("/login",function(req,res){
-user.find({email:req.body.email,password:req.body.password},function(err,x){
+user.find({email:req.body.email,password:md5(req.body.password)},function(err,x){
 if(err)
 console.log(err);
 else
