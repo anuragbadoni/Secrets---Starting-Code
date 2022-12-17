@@ -1,6 +1,9 @@
 //jshint esversion:6
 require('dotenv').config();
-var md5 = require('md5');
+
+// var md5 = require('md5');
+const bcrypt = require('bcrypt');
+const saltRounds = 2;
 
 //                                                 mongoose                 //
 const mongoose=require("mongoose");
@@ -68,33 +71,49 @@ app.get("/register",function(req,res){
 
 
 app.post("/register",function(req,res){
+    const hash = bcrypt.hashSync(req.body.password, saltRounds);
+
 const newuser=new user({
     email:req.body.email,
-    password:md5(req.body.password)
+    password:hash
 });
 newuser.save(function(err){
-if(!err)
-{
-console.log("succesfully added user");
-res.render("secrets");
-}
-else
-console.log(err);
-});
+    if(!err)
+    {
+    console.log("succesfully added user");
+    res.render("secrets");
+    }
+    else
+    console.log(err);
+    });
+    
+
+
 });
 
 
 
 app.post("/login",function(req,res){
-user.find({email:req.body.email,password:md5(req.body.password)},function(err,x){
+user.findOne({email:req.body.email},function(err,x){
 if(err)
 console.log(err);
 else
 {
 if(x.length!=0)
 {
-    console.log(x);
-res.render("secrets");
+    const password=req.body.password;
+   const result= bcrypt.compareSync(password, x.password);
+        if(result === true)
+        {
+            res.render("secrets");
+        }
+        else
+        {
+            console.log(result);
+            res.redirect("/login");
+        }
+   
+
 }
 else
 res.redirect("/login");
