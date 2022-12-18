@@ -2,22 +2,45 @@
 require('dotenv').config();
 
 // var md5 = require('md5');
-const bcrypt = require('bcrypt');
-const saltRounds = 2;
+// const bcrypt = require('bcrypt');
+// const saltRounds = 2;
 
 //                                                 mongoose                 //
 const mongoose=require("mongoose");
 mongoose.set('strictQuery', true);
-mongoose.connect("mongodb://localhost:27017/userdb")
+
+const express=require("express");
+const bodyParser = require("body-parser");
+const ejs=require("express");
+const { allowedNodeEnvironmentFlags } = require("process");
+
 // var encrypt = require('mongoose-encryption');
+var session =require("express-session");
+var passport=require("passport");
+var passportLocalMongoose=require("passport-local-mongoose");
+
+const app = express();
+
+app.use(session({
+    secret:"our little secret",
+    resave:false,
+    saveUninitialized:false
+}))
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+
+mongoose.connect("mongodb://localhost:27017/userdb")
+
 
 
 const userschema=new mongoose.Schema({
-email:String,
+username:String,
 password:String
 });           
 
-
+userschema.plugin(passportLocalMongoose);
 
 const secretschema=new mongoose.Schema({
 inputsecret:String
@@ -31,20 +54,18 @@ inputsecret:String
 
 //                                  encryption                                           //
 
-
-
-
-
-const user=mongoose.model("user",userschema);
+const User=mongoose.model("User",userschema);
 const secrets=mongoose.model("secrets",secretschema);
+
+
+
 //                                                 mongoose                 //
+passport.use(User.createStrategy());
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
 
-const express=require("express");
-const bodyParser = require("body-parser");
-const ejs=require("express");
-const { allowedNodeEnvironmentFlags } = require("process");
 
-const app = express();
+
 
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({extended: true}));
@@ -68,64 +89,70 @@ app.get("/register",function(req,res){
     res.render("register");
     });
     
+app.get("/secret",function(req,res){
+if(req.isAuthenticated()){
+    secrets.find({},function(err,x){
+        if(!err)
+        {
+            res.render("secrets",{secretdata:x});  
+        }
+    });
 
+}
+    else
+    {
+        console.log("u were in secret");
+    res.redirect("/login");
+    }
+});
 
 app.post("/register",function(req,res){
-    const hash = bcrypt.hashSync(req.body.password, saltRounds);
-
-const newuser=new user({
-    email:req.body.email,
-    password:hash
-});
-newuser.save(function(err){
-    if(!err)
-    {
-    console.log("succesfully added user");
-    res.render("secrets");
-    }
-    else
-    console.log(err);
-    });
-    
-
-
-});
-
-
-
-app.post("/login",function(req,res){
-user.findOne({email:req.body.email},function(err,x){
-if(err)
-console.log(err);
-else
-{
-if(x.length!=0)
-{
-    const password=req.body.password;
-   const result= bcrypt.compareSync(password, x.password);
-        if(result === true)
-        {
-            res.render("secrets");
+   
+    User.register({username: req.body.username}, req.body.password, function(err,user){
+        if(err){
+        console.log(err);
+    res.redirect("/register");
         }
         else
         {
-            console.log(result);
-            res.redirect("/login");
-        }
-   
+            console.log("imher");
+            passport.authenticate('local',{ successRedirect: '/secret', failureRedirect: '/login' })(req, res);
+            }
+        });
+    });
 
-}
-else
-res.redirect("/login");
-}
+
+
+// passport.authenticate('local', { successRedirect: '/', failureRedirect: '/login', })(req, res);
+
+app.post("/login",function(req,res){
+const user=new User({
+    username:req.body.username,
+    password: req.body.password
 });
+req.login(user,function(err){
+    if(err)
+    console.log(err);
+    else
+    {
+        console.log("imher");
+        passport.authenticate('local',{ successRedirect: '/secret', failureRedirect: '/login' })(req, res);
+
+    }
+})
 });
 
 
 
 
 app.get("/logout",function(req,res){
-res.redirect("/");
+    req.logout(function(err){
+        if(!err)
+        res.redirect("/");
+        else
+        console.log(err);
+    });
+
 });
 
 app.get("/submit",function(req,res){
@@ -141,7 +168,13 @@ newsecret.save(function(err){
     if(err)
     console.log(err);
     else
-    res.render("secrets");
+    {
+    secrets.find({},function(err,x){
+        if(!err)
+        {
+            res.render("secrets",{secretdata:x});  
+        }
+    });}
 });
 
 
