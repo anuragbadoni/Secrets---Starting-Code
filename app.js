@@ -7,9 +7,23 @@ require('dotenv').config();
 // const bcrypt = require('bcrypt');
 // const saltRounds = 2;
 
+
+
+
+
+
+
+
+
+
+
 //                                                 mongoose                 //
 const mongoose=require("mongoose");
 mongoose.set('strictQuery', true);
+
+
+
+
 
 const express=require("express");
 const bodyParser = require("body-parser");
@@ -21,6 +35,7 @@ var session =require("express-session");
 var passport=require("passport");
 var passportLocalMongoose=require("passport-local-mongoose");
 var GoogleStrategy = require('passport-google-oauth20').Strategy;
+const FacebookStrategy = require('passport-facebook').Strategy;
 var findOrCreate=require("mongoose-findorcreate");
 
 const app = express();
@@ -42,7 +57,8 @@ mongoose.connect("mongodb://localhost:27017/userdb")
 const userschema=new mongoose.Schema({
 username:String,
 password:String,
-googleId:String
+googleId:String,
+facebookId:String
 });           
 
 userschema.plugin(passportLocalMongoose);
@@ -85,6 +101,18 @@ passport.use(new GoogleStrategy({
     });
   }
 ));
+passport.use(new FacebookStrategy({
+    clientID: process.env.FACEBOOK_APP_ID,
+    clientSecret: process.env.FACEBOOK_APP_SECRET,
+    callbackURL: "http://localhost:3000/auth/facebook/callback"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    User.findOrCreate({ facebookId: profile.id }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+));
+
 
 
 app.set('view engine', 'ejs');
@@ -102,9 +130,18 @@ app.get("/",function(req,res){
 app.get('/auth/google',
   passport.authenticate('google', { scope: ['profile'] }));
 
+  app.get('/auth/facebook',
+  passport.authenticate('facebook'));
 
   app.get('/auth/google/secrets', 
   passport.authenticate('google', { failureRedirect: '/login' }),
+  function(req, res) {
+    // Successful authentication, redirect home.
+    res.redirect('/secret');
+  });
+
+  app.get('/auth/facebook/callback',
+  passport.authenticate('facebook', { failureRedirect: '/login' }),
   function(req, res) {
     // Successful authentication, redirect home.
     res.redirect('/secret');
